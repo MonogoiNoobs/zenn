@@ -3,7 +3,7 @@ title: "Media FoundationのSink Writerで未圧縮の映像と音声フレーム
 emoji: "🎬"
 type: "tech" # tech: 技術記事 / idea: アイデア
 topics: ["windows", "mediafoundation", "mp4"]
-published: false
+published: true
 ---
 
 ## まえがき
