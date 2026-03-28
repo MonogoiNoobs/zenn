@@ -2,7 +2,7 @@
 title: "Media FoundationのSink Writerで未圧縮の映像と音声フレームを処理して(f)MP4に変換する"
 emoji: "🎬"
 type: "tech" # tech: 技術記事 / idea: アイデア
-topics: ["windows", "mediafoundation", "mp4"]
+topics: ["windows", "windowsapi", "mediafoundation", "mp4", "cpp"]
 published: true
 ---
 
