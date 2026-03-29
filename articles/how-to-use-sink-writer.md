@@ -111,8 +111,8 @@ using unique_mfshutdown_call = wil::unique_call<decltype(&::MFShutdown), ::MFShu
 }
 
 {
-    // CoInitializeEx()用はWILが直接提供する
-    auto const com_cleanup{ wil::CoInitializeEx() };
+	// CoInitializeEx()用はWILが直接提供する
+	auto const com_cleanup{ wil::CoInitializeEx() };
 	auto const mf_cleanup{ AutoMFStartup() };
 } // ここで開放される
 ```
@@ -215,17 +215,17 @@ sink_writer_attributes->SetGUID(MF_TRANSCODE_CONTAINERTYPE, MFTranscodeContainer
 wil::com_ptr<IMFSinkWriter> sink_writer{};
 MFCreateSinkWriterFromURL
 (
-    // 出力先（ワイド文字列、拡張子込み）
-    LR"(C:\Users\Foo\output.mp4)",
+	// 出力先（ワイド文字列、拡張子込み）
+	LR"(C:\Users\Foo\output.mp4)",
 
-    // 不使用
-    nullptr,
+	// 不使用
+	nullptr,
 
-    // 属性群へのポインタ
-    sink_writer_attributes.get(),
+	// 属性群へのポインタ
+	sink_writer_attributes.get(),
 
-    // Sink Writer作成先への二重ポインタ
-    std::out_ptr(sink_writer)
+	// Sink Writer作成先への二重ポインタ
+	std::out_ptr(sink_writer)
 );
 ```
 
@@ -397,13 +397,13 @@ output_audio_media_type->SetUINT32(MF_MT_AUDIO_BITS_PER_SAMPLE, 16u);
 // 以下2つは入力のメディア種類と一致する必要がある
 output_audio_media_type->SetUINT32
 (
-    MF_MT_AUDIO_SAMPLES_PER_SECOND,
-    MFGetAttributeUINT32(input_audio_media_type.get(), MF_MT_AUDIO_SAMPLES_PER_SECOND, 48000u)
+	MF_MT_AUDIO_SAMPLES_PER_SECOND,
+	MFGetAttributeUINT32(input_audio_media_type.get(), MF_MT_AUDIO_SAMPLES_PER_SECOND, 48000u)
 );
 output_audio_media_type->SetUINT32
 (
-    MF_MT_AUDIO_NUM_CHANNELS,
-    MFGetAttributeUINT32(input_audio_media_type.get(), MF_MT_AUDIO_NUM_CHANNELS, 2u)
+	MF_MT_AUDIO_NUM_CHANNELS,
+	MFGetAttributeUINT32(input_audio_media_type.get(), MF_MT_AUDIO_NUM_CHANNELS, 2u)
 );
 
 // 12000・16000・20000・24000しか設定できない
@@ -476,8 +476,8 @@ Sink Writerに情報を送るには、`IMFSample`に格納してから`IMFSinkWr
 ```cpp
 BYTE const *raw_video_frame{ fakefunc::get_raw_video_frame() };
 std::int64_t video_frame_timestamp
-{ 
-    video_sample_duration * fakefunc::get_current_processing_count()
+{
+	video_sample_duration * fakefunc::get_current_processing_count()
 };
 ```
 
@@ -502,17 +502,17 @@ MFFrameRateToAverageTimePerFrame(30u, 1u, &video_sample_duration);
 wil::com_ptr<IMFMediaBuffer> video_buffer{};
 MFCreateMediaBufferFromMediaType
 (
-    // 映像入力用メディア種類
-    input_video_media_type.get(),
+	// 映像入力用メディア種類
+	input_video_media_type.get(),
 
-    // サンプルの長さ
-    video_sample_duration,
+	// サンプルの長さ
+	video_sample_duration,
 
-    // 不使用
-    0, 0,
+	// 不使用
+	0, 0,
 
-    // 映像メディアバッファーへの二重ポインタ
-    std::out_ptr(video_buffer)
+	// 映像メディアバッファーへの二重ポインタ
+	std::out_ptr(video_buffer)
 );
 ```
 
@@ -543,37 +543,37 @@ DWORD buffer_length{};
 
 video_buffer.query<IMF2DBuffer2>()->Lock2DSize
 (
-    // 書き込み専用フラグ
-    MF2DBuffer_LockFlags_Write,
+	// 書き込み専用フラグ
+	MF2DBuffer_LockFlags_Write,
 
-    // 1本目の走査線の先頭
-    &scanline,
+	// 1本目の走査線の先頭
+	&scanline,
 
-    // 既定ストライド値
-    &stride,
+	// 既定ストライド値
+	&stride,
 
-    // 不使用
-    &buffer_start, &buffer_length
+	// 不使用
+	&buffer_start, &buffer_length
 );
 
 MFCopyImage
 (
-    // 書込先の先頭のポインタ
-    scanline,
+	// 書込先の先頭のポインタ
+	scanline,
 
-    // 書込先のストライド値
-    stride,
+	// 書込先のストライド値
+	stride,
 
-    // 書込元の先頭のポインタ
-    raw_video_frame,
+	// 書込元の先頭のポインタ
+	raw_video_frame,
 
-    // 書込元のストライド値（左）
-    // ＝　書込元の走査線1本分の容量（右）
-    // ＝　既定ストライド値
-    stride, stride,
+	// 書込元のストライド値（左）
+	// ＝　書込元の走査線1本分の容量（右）
+	// ＝　既定ストライド値
+	stride, stride,
 
-    // 高さ
-    1080ul
+	// 高さ
+	1080ul
 );
 
 video_buffer.query<IMF2DBuffer2>()->Unlock2D();
@@ -626,11 +626,11 @@ std::int64_t const audio_sample_timestamp{ fakefunc::get_raw_audio_sample_timest
 wil::com_ptr<IMFMediaBuffer> audio_buffer{};
 MFCreateMediaBufferFromMediaType
 (
-    input_audio_media_type.get(),
-    audio_sample_duration,
-    audio_sample_size, // 要求する最小サイズ
-    0,
-    std::out_ptr(audio_buffer)
+	input_audio_media_type.get(),
+	audio_sample_duration,
+	audio_sample_size, // 要求する最小サイズ
+	0,
+	std::out_ptr(audio_buffer)
 );
 ```
 
