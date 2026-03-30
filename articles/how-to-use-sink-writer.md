@@ -62,7 +62,7 @@ published: true
 
 ### Codec API
 
-各種設定に必要な`codecapi.h`も取り込む。
+各種設定に必要な定数のある`codecapi.h`も取り込む。
 
 ```cpp
 #include <codecapi.h>
@@ -126,7 +126,7 @@ using unique_mfshutdown_call = wil::unique_call<decltype(&::MFShutdown), ::MFShu
 
 まず、Sink Writerの初期化時に使う、各種属性を含む`IMFAttributes`を準備する。
 
-`IMFAttributes`はスマートポインタ`wil::com_ptr`で管理する。
+`IMFAttributes`を始め、Media FoundationのインターフェイスはWILのスマートポインタ`wil::com_ptr`で管理する。
 
 ```cpp
 wil::com_ptr<IMFAttributes> sink_writer_attributes{};
@@ -474,11 +474,8 @@ Sink Writerに情報を送るには、`IMFSample`に格納してから`IMFSinkWr
 まず、映像データ・再生のタイミング（以下、タイムスタンプ）は以下と仮定。
 
 ```cpp
-BYTE const *raw_video_frame{ fakefunc::get_raw_video_frame() };
-std::int64_t video_frame_timestamp
-{
-	video_sample_duration * fakefunc::get_current_processing_count()
-};
+BYTE const *raw_video_frame_begin{ fakefunc::get_raw_video_frame() };
+std::int64_t video_frame_timestamp{ fakefunc::get_video_frame_timestamp() };
 ```
 
 ヘルパー関数`MFFrameRateToAverageTimePerFrame()`でサンプルの長さを求めておく。
@@ -536,9 +533,9 @@ MFCreateMediaBufferFromMediaType
 `wil::com_ptr`は`query<IDesiredInterface>()`で簡単に問い合わせられる。
 
 ```cpp
-uint8_t *scanline{};
+uint8_t *scanline_begin{};
 long stride{};
-uint8_t *buffer_start{};
+uint8_t *buffer_begin{};
 DWORD buffer_length{};
 
 video_buffer.query<IMF2DBuffer2>()->Lock2DSize
@@ -547,25 +544,25 @@ video_buffer.query<IMF2DBuffer2>()->Lock2DSize
 	MF2DBuffer_LockFlags_Write,
 
 	// 1本目の走査線の先頭
-	&scanline,
+	&scanline_begin,
 
 	// 既定ストライド値
 	&stride,
 
 	// 不使用
-	&buffer_start, &buffer_length
+	&buffer_begin, &buffer_length
 );
 
 MFCopyImage
 (
 	// 書込先の先頭のポインタ
-	scanline,
+	scanline_begin,
 
 	// 書込先のストライド値
 	stride,
 
 	// 書込元の先頭のポインタ
-	raw_video_frame,
+	raw_video_frame_begin,
 
 	// 書込元のストライド値（左）
 	// ＝　書込元の走査線1本分の容量（右）
@@ -587,11 +584,11 @@ video_buffer.query<IMF2DBuffer2>()->Unlock2D();
 
 ```cpp
 // IMF2DBuffer2で長さを取得し、
-DWORD contiguous_length{};
-video_buffer.query<IMF2DBuffer2>()->GetContiguousLength(&contiguous_length);
+DWORD video_buffer_size{};
+video_buffer.query<IMF2DBuffer2>()->GetContiguousLength(&video_buffer_size);
 
 // IMFMediaBuffer側にも伝える
-video_buffer->SetCurrentLength(contiguous_length);
+video_buffer->SetCurrentLength(video_buffer_size);
 ```
 
 後は`IMFSample`に格納し、Sink Writerに送るだけ。
@@ -614,10 +611,10 @@ sink_writer->WriteSample(video_index, video_sample.get());
 音声データ・長さ・タイムスタンプは以下と仮定。
 
 ```cpp
-BYTE const *raw_audio_sample{ fakefunc::get_raw_audio_sample() };
-DWORD const audio_sample_size{ fakefunc::get_raw_audio_sample_size() };
-std::int64_t const audio_sample_duration{ fakefunc::get_raw_audio_sample_duration() };
-std::int64_t const audio_sample_timestamp{ fakefunc::get_raw_audio_sample_timestamp() };
+BYTE const *raw_audio_sample_begin{ fakefunc::get_raw_audio_sample() };
+DWORD const raw_audio_sample_size{ fakefunc::get_raw_audio_sample_size() };
+std::int64_t const audio_sample_duration{ fakefunc::get_audio_sample_duration() };
+std::int64_t const audio_sample_timestamp{ fakefunc::get_audio_sample_timestamp() };
 ```
 
 映像と同様に`MFCreateMediaBufferFromMediaType()`で`IMFMediaBuffer`を作る。
@@ -638,12 +635,12 @@ MFCreateMediaBufferFromMediaType
 処理時のヘルパー関数もないため、通常通り`std::memcpy()`や`std::memmove()`、あるいは`memcpy_s()`や`memmove_s()`を使う。
 
 ```cpp
-BYTE *media_data{};
-DWORD media_data_max_length{};
+BYTE *audio_sample_begin{};
+DWORD audio_data_max_size{};
 
-audio_buffer->Lock(&media_data, &media_data_max_length, nullptr);
+audio_buffer->Lock(&audio_sample_begin, &audio_data_max_size, nullptr);
 
-memmove_s(media_data, media_data_max_length, audio_data, audio_sample_size);
+memmove_s(audio_sample_begin, audio_data_max_size, raw_audio_sample_begin, audio_sample_size);
 
 audio_buffer->Unlock();
 
