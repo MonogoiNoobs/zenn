@@ -424,7 +424,7 @@ sink_writer->AddStream(output_audio_media_type.get(), &audio_index);
 
 ```cpp
 wil::com_ptr<IMFAttributes> video_encoder_attributes{};
-MFCreateAttributes(std::out_ptr(encoder_attributes), 4u);
+MFCreateAttributes(std::out_ptr(video_encoder_attributes), 4u);
 
 // 「CABAC圧縮します」
 // （大半の動画サイトが推奨）
