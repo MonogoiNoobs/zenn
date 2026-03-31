@@ -493,7 +493,7 @@ MFFrameRateToAverageTimePerFrame(30u, 1u, &video_sample_duration);
 
 だが、今回のような未圧縮の入力を扱う際は[`IMF2DBuffer`](https://learn.microsoft.com/ja-jp/windows/win32/api/mfobjects/nn-mfobjects-imf2dbuffer)の方がよさそうである。しかし、作り方が載っていない。
 
-そこで、公式ドキュメントのリファレンスの方を見ていくと、[MFCreate2DMediaBuffer()](https://learn.microsoft.com/ja-jp/windows/win32/api/mfapi/nf-mfapi-mfcreate2dmediabuffer)が見つかる。どうやら、`IMFMediaBuffer`を渡せば、そこに作ってくれるらしい。
+そこで、公式ドキュメントのリファレンスの方を見ていくと、[`MFCreate2DMediaBuffer()`](https://learn.microsoft.com/ja-jp/windows/win32/api/mfapi/nf-mfapi-mfcreate2dmediabuffer)が見つかる。どうやら、`IMFMediaBuffer`を渡せば、そこに作ってくれるらしい。
 
 しかし、更にリファレンスを見ていくと、[`MFCreateMediaBufferFromMediaType()`](https://learn.microsoft.com/ja-jp/windows/win32/api/mfapi/nf-mfapi-mfcreatemediabufferfrommediatype)が見つかる。渡したメディア種類に適した`IMFMediaBuffer`を作ってくれるらしく、映像ならば自動的に[`IMF2DBuffer2`](https://learn.microsoft.com/ja-jp/windows/win32/api/mfobjects/nn-mfobjects-imf2dbuffer)も作ってくれるそう。今回はこれを使うことにする。
 
