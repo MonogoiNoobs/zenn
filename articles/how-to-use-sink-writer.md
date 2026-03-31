@@ -86,7 +86,7 @@ import std;
 
 ## Media Foundationの準備
 
-COMを扱うため、最初に`CoInitializeEx()`を呼び、Media Foundationを扱う際は続けて`MFStartup()`も呼ぶ。一連の処理が終わったら`MFShutdown()`・`CoUninitialize()`を呼ぶ。
+COMを扱うため、最初に`CoInitializeEx()`を呼び、Media Foundationを扱う際は続けて`MFStartup()`も呼ぶ。`MFShutdown()`・`CoUninitialize()`で後始末。
 
 ```cpp
 CoInitializeEx();
@@ -99,7 +99,7 @@ CoUninitialize();
 ```
 
 :::message
-WILを使えば後処理を自動化できる。その場合、[WILの公式Wiki](https://github.com/microsoft/wil/wiki/RAII-resource-wrappers#wilunique_call)を参考に、自前で`MFStartup()`用の`wil::unique_call`を書く必要がある。
+WILを使えば後始末を自動化できる。その場合、[WILの公式Wiki](https://github.com/microsoft/wil/wiki/RAII-resource-wrappers#wilunique_call)を参考に、自前で`MFStartup()`用の`wil::unique_call`を書く必要がある。
 
 ```cpp
 // MFStartup()用は自前で書く必要がある
@@ -209,7 +209,7 @@ sink_writer_attributes->SetGUID(MF_TRANSCODE_CONTAINERTYPE, MFTranscodeContainer
 
 準備した属性と共に、[`MFCreateSinkWriterFromURL()`](https://learn.microsoft.com/ja-jp/windows/win32/api/mfreadwrite/nf-mfreadwrite-mfcreatesinkwriterfromurl)でSink Writerを作る。
 
-標準テンプレートライブラリのそれと同様に、`get()`で本体を取得できる。
+標準テンプレートライブラリのそれと同様に、`get()`で本体を取得可能。
 
 ```cpp
 wil::com_ptr<IMFSinkWriter> sink_writer{};
@@ -233,9 +233,9 @@ MFCreateSinkWriterFromURL
 
 作ったSink Writerに映像・音声の入出力の設定をする。
 
-#### 入力用のメディア種類群の準備
+#### 入力用のメディア種類の準備
 
-まず、双方の入力用のメディア種類群を準備する。
+まず、双方の入力用のメディア種類を準備する。
 
 両種類群は後の処理でも使うため、取っておく。
 
@@ -264,13 +264,11 @@ input_video_media_type->SetUINT32(MF_MT_ALL_SAMPLES_INDEPENDENT, TRUE);
 input_video_media_type->SetUINT32(MF_MT_FIXED_SIZE_SAMPLES, TRUE);
 ```
 
-ヘルパー関数で解像度・フレームレート・[ピクセル縦横比](https://helpx.adobe.com/jp/premiere/desktop/edit-projects/intro-to-editing/pixel-aspect-ratio.html)を設定する。
+ヘルパー関数`MFSetAttributeSize()`で解像度を、`MFSetAttributeRatio()`でフレームレート・[ピクセル縦横比](https://helpx.adobe.com/jp/premiere/desktop/edit-projects/intro-to-editing/pixel-aspect-ratio.html)を設定する。
 
 ```cpp
-// 解像度はMFSetAttributeSize()で
 MFSetAttributeSize(input_video_media_type.get(), MF_MT_FRAME_SIZE, 1920u, 1080u);
 
-// フレームレートとピクセル縦横比はMFSetAttributeRatio()で
 MFSetAttributeRatio(input_video_media_type.get(), MF_MT_FRAME_RATE, 30u, 1u);
 MFSetAttributeRatio(input_video_media_type.get(), MF_MT_PIXEL_ASPECT_RATIO, 1u, 1u);
 ```
@@ -299,7 +297,7 @@ input_video_media_type->SetUINT32(MF_MT_DEFAULT_STRIDE, default_stride);
 ```
 
 :::message
-既知の場合、公式では色関連の種類の設定も推奨しているが、今回は無視する。
+既知の場合、公式では色関連の種類の設定も推奨しているが、今回は無視。
 :::
 
 ##### 音声
@@ -323,7 +321,7 @@ input_audio_media_type->SetUINT32(MF_MT_ALL_SAMPLES_INDEPENDENT, TRUE);
 
 #### 出力ストリームの設定
 
-準備したメディア種類群で、Sink Writerの出力ストリームの設定をする。
+準備したメディア種類で、Sink Writerの出力ストリームの設定をする。
 
 :::message alert
 **必ず**映像→音声の順番で処理する。
@@ -344,14 +342,14 @@ output_video_media_type->SetGUID(MF_MT_MAJOR_TYPE, MFMediaType_Video);
 output_video_media_type->SetGUID(MF_MT_SUBTYPE, MFVideoFormat_H264);
 
 // 「フレームレートは入力と同じです」
-std::uint32_t rate{}, scale{};
-MFGetAttributeRatio(input_video_media_type.get(), MF_MT_FRAME_RATE, &rate, &scale);
-MFSetAttributeRatio(output_video_media_type.get(), MF_MT_FRAME_RATE, rate, scale);
+std::uint32_t input_video_frame_rate{}, input_video_frame_scale{};
+MFGetAttributeRatio(input_video_media_type.get(), MF_MT_FRAME_RATE, &input_video_frame_rate, &input_video_frame_scale);
+MFSetAttributeRatio(output_video_media_type.get(), MF_MT_FRAME_RATE, input_video_frame_rate, input_video_frame_scale);
 
 // 「フレームの容量は入力と同じです」
-std::uint32_t width{}, height{};
-MFGetAttributeSize(input_video_media_type.get(), MF_MT_FRAME_SIZE, &width, &height);
-MFSetAttributeSize(output_video_media_type.get(), MF_MT_FRAME_SIZE, width, height);
+std::uint32_t input_video_width{}, input_video_height{};
+MFGetAttributeSize(input_video_media_type.get(), MF_MT_FRAME_SIZE, &input_video_width, &input_video_height);
+MFSetAttributeSize(output_video_media_type.get(), MF_MT_FRAME_SIZE, input_video_width, input_video_height);
 
 // 「非インターレースです」
 // （≒デジタルです）
@@ -362,7 +360,7 @@ output_video_media_type->SetUINT32(MF_MT_INTERLACE_MODE, MFVideoInterlace_Progre
 output_video_media_type->SetUINT32(MF_MT_MPEG2_PROFILE, eAVEncH264VProfile_High);
 ```
 
-色の情報も追加しておく。今回はFFmpegで`(tv, bt709, progressive)`と出るよう設定する。
+色の情報も追加しておく。今回はFFmpegで`(tv, bt709, progressive)`と出るよう設定。
 
 ```cpp
 output_video_media_type->SetUINT32(MF_MT_VIDEO_NOMINAL_RANGE, MFNominalRange_16_235);
@@ -383,7 +381,7 @@ sink_writer->AddStream(output_video_media_type.get(), &video_index);
 ##### 音声
 
 [公式ドキュメント](https://learn.microsoft.com/ja-jp/windows/win32/medfound/aac-encoder)を参考。
-入力のメディア種類と一致する必要がある種類は、`MFGetAttributeUINT32()`で入力のメディア種類から特定の値を取得し、そのまま設定する。第3引数は既定値。
+入力用のメディア種類と一致する必要がある種類は、`MFGetAttributeUINT32()`で値を取得し、そのまま設定。第3引数は既定値。
 
 ```cpp
 wil::com_ptr<IMFMediaType> output_audio_media_type{};
@@ -394,7 +392,7 @@ output_audio_media_type->SetGUID(MF_MT_MAJOR_TYPE, MFMediaType_Audio);
 output_audio_media_type->SetGUID(MF_MT_SUBTYPE, MFAudioFormat_AAC);
 output_audio_media_type->SetUINT32(MF_MT_AUDIO_BITS_PER_SAMPLE, 16u);
 
-// 以下2つは入力のメディア種類と一致する必要がある
+// 以下2つは入力用のメディア種類と一致する必要がある
 output_audio_media_type->SetUINT32
 (
 	MF_MT_AUDIO_SAMPLES_PER_SECOND,
@@ -476,11 +474,11 @@ BYTE const *raw_video_frame_begin{ fakefunc::get_raw_video_frame() };
 std::int64_t video_frame_timestamp{ fakefunc::get_video_frame_timestamp() };
 ```
 
-ヘルパー関数`MFFrameRateToAverageTimePerFrame()`でサンプルの長さを求めておく。
+フレームレートをヘルパー関数`MFFrameRateToAverageTimePerFrame()`に渡し、サンプルの長さを求めておく。
 
 ```cpp
 std::uint64_t video_sample_duration{};
-MFFrameRateToAverageTimePerFrame(30u, 1u, &video_sample_duration);
+MFFrameRateToAverageTimePerFrame(input_video_frame_rate, input_video_frame_scale, &video_sample_duration);
 ```
 
 `IMFSample`を作るには、まず元となる`IMFMediaBuffer`を作る必要があり、公式ドキュメントのチュートリアルは`MFCreateMemoryBuffer()`で作っている。
@@ -488,7 +486,7 @@ MFFrameRateToAverageTimePerFrame(30u, 1u, &video_sample_duration);
 
 公式ドキュメントのリファレンスの方を見ていくと、[`MFCreate2DMediaBuffer()`](https://learn.microsoft.com/ja-jp/windows/win32/api/mfapi/nf-mfapi-mfcreate2dmediabuffer)が見つかる。どうやら、`IMFMediaBuffer`を渡せばそこに作ってくれるらしい。
 
-しかし、更にリファレンスを見ていくと、[`MFCreateMediaBufferFromMediaType()`](https://learn.microsoft.com/ja-jp/windows/win32/api/mfapi/nf-mfapi-mfcreatemediabufferfrommediatype)が見つかる。渡したメディア種類に適した`IMFMediaBuffer`を作ってくれるらしく、映像ならば自動的に[`IMF2DBuffer2`](https://learn.microsoft.com/ja-jp/windows/win32/api/mfobjects/nn-mfobjects-imf2dbuffer)も作ってくれるそう。今回はこれを使うことにする。
+しかし、更にリファレンスを見ていくと、[`MFCreateMediaBufferFromMediaType()`](https://learn.microsoft.com/ja-jp/windows/win32/api/mfapi/nf-mfapi-mfcreatemediabufferfrommediatype)が見つかる。渡したメディア種類に適した`IMFMediaBuffer`を作ってくれるそうで、映像ならば自動的に[`IMF2DBuffer2`](https://learn.microsoft.com/ja-jp/windows/win32/api/mfobjects/nn-mfobjects-imf2dbuffer)も作ってくれるそう。今回はこれを使うことにする。
 
 ```cpp
 wil::com_ptr<IMFMediaBuffer> video_buffer{};
