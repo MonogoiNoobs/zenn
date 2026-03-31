@@ -469,8 +469,6 @@ Sink Writerに情報を送るには、`IMFSample`に格納してから`IMFSinkWr
 
 ### 映像
 
-**公式ドキュメントにある推奨事項の大半が嘘である。**
-
 まず、映像データ・再生のタイミング（以下、タイムスタンプ）は以下と仮定。
 
 ```cpp
@@ -493,7 +491,11 @@ MFFrameRateToAverageTimePerFrame(30u, 1u, &video_sample_duration);
 * `MFCreateDXSurfaceBuffer()`
 * `MFCreateAlignedMemoryBuffer()`
 
-しかし、実際にはこのどれでもない[`MFCreateMediaBufferFromMediaType()`](https://learn.microsoft.com/ja-jp/windows/win32/api/mfapi/nf-mfapi-mfcreatemediabufferfrommediatype)を使う。
+だが、今回のような未圧縮の入力を扱う際は[`IMF2DBuffer`](https://learn.microsoft.com/ja-jp/windows/win32/api/mfobjects/nn-mfobjects-imf2dbuffer)の方がよさそうである。しかし、作り方が載っていない。
+
+そこで、公式ドキュメントのリファレンスの方を見ていくと、[MFCreate2DMediaBuffer()](https://learn.microsoft.com/ja-jp/windows/win32/api/mfapi/nf-mfapi-mfcreate2dmediabuffer)が見つかる。どうやら、`IMFMediaBuffer`を渡せば、そこに作ってくれるらしい。
+
+しかし、更にリファレンスを見ていくと、[`MFCreateMediaBufferFromMediaType()`](https://learn.microsoft.com/ja-jp/windows/win32/api/mfapi/nf-mfapi-mfcreatemediabufferfrommediatype)が見つかる。渡したメディア種類に適した`IMFMediaBuffer`を作ってくれるらしく、映像ならば自動的に[`IMF2DBuffer2`](https://learn.microsoft.com/ja-jp/windows/win32/api/mfobjects/nn-mfobjects-imf2dbuffer)も作ってくれるそう。今回はこれを使うことにする。
 
 ```cpp
 wil::com_ptr<IMFMediaBuffer> video_buffer{};
@@ -513,18 +515,7 @@ MFCreateMediaBufferFromMediaType
 );
 ```
 
-`IMFMediaBuffer`の処理について、[公式ドキュメント](https://learn.microsoft.com/ja-jp/windows/win32/medfound/uncompressed-video-buffers#use-the-imf2dbuffer-interface)では事実上、以下の2つの手法が示されている。
-
-* `IMFMediaBuffer`から`IMF2DBuffer`を問い合わせ、それを使う
-* `IMFMediaBuffer`をそのまま使う
-
-しかし、実際にはこのどちらでもない、`MFCreateMediaBufferFromMediaType()`で映像バッファーを作った際に問い合わせ可能になる[`IMF2DBuffer2`](https://learn.microsoft.com/ja-jp/windows/win32/api/mfobjects/nn-mfobjects-imf2dbuffer2)を使う。
-
-:::message
-`IMF2DBuffer2`の使用は、[`IMF2DBuffer2::Lock2DSize()`のドキュメント](https://learn.microsoft.com/ja-jp/windows/win32/api/mfobjects/nf-mfobjects-imf2dbuffer2-lock2dsize)で間接的に推奨されている。
-:::
-
-書き込み専用フラグと共に`IMF2DBuffer2::Lock2DSize()`を呼び、一時的にポインタを取得し、ヘルパー関数`MFCopyImage()`で書き込んだら、`IMF2DBuffer2::Unlock2D()`を呼んで処理を終える。
+未圧縮の映像フレームを`IMFMediaBuffer`に渡すには、①[`IMF2DBuffer2`](https://learn.microsoft.com/ja-jp/windows/win32/api/mfobjects/nn-mfobjects-imf2dbuffer2)を問い合わせ、②書き込み専用フラグで`IMF2DBuffer2::Lock2DSize()`を呼び、③一時的に取得したポインタの先にヘルパー関数`MFCopyImage()`で書き込み、④`IMF2DBuffer2::Unlock2D()`を呼んで処理を終えればいい。
 
 :::message
 `MFCopyImage()`の代わりに`std::memcpy()`や`std::memmove()`でも可。
