@@ -6,6 +6,8 @@ topics: ["windows", "windowsapi", "mediafoundation", "mp4", "cpp"]
 published: true
 ---
 
+<!-- SPDX-License-Identifier: CC-BY-4.0 -->
+
 ## まえがき
 
 [Sink Writer](https://learn.microsoft.com/ja-jp/windows/win32/medfound/sink-writer)は、Media Foundationで簡単に映像・音声ファイルを処理して出力できる便利なコンポーネントである。
@@ -87,10 +89,11 @@ import std;
 ## Media Foundationの準備
 
 COMを扱うため、最初に`CoInitializeEx()`を呼び、Media Foundationを扱う際は続けて`MFStartup()`も呼ぶ。`MFShutdown()`・`CoUninitialize()`で後始末。
+`MFStartup()`は`MF_VERSION`マクロを渡す必要がある。
 
 ```cpp
-CoInitializeEx();
-MFStartup();
+CoInitializeEx(nullptr, COINIT_MULTITHREADED);
+MFStartup(MF_VERSION);
 
 /* 各種処理 */
 
