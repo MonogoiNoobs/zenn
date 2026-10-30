@@ -110,7 +110,7 @@ using unique_mfshutdown_call = wil::unique_call<decltype(&::MFShutdown), ::MFShu
 [[nodiscard]] inline auto AutoMFStartup(DWORD &&flags = MFSTARTUP_FULL)
 {
 	::MFStartup(MF_VERSION, flags);
-	return unique_mfshutdown_call();
+	return unique_mfshutdown_call{};
 }
 
 {
@@ -512,7 +512,7 @@ MFCreateMediaBufferFromMediaType
 未圧縮の映像フレームを`IMFMediaBuffer`に渡すには、①[`IMF2DBuffer2`](https://learn.microsoft.com/ja-jp/windows/win32/api/mfobjects/nn-mfobjects-imf2dbuffer2)を問い合わせ、②書き込み専用フラグで`IMF2DBuffer2::Lock2DSize()`を呼び、③一時的に取得したポインタの先にヘルパー関数`MFCopyImage()`で書き込み、④`IMF2DBuffer2::Unlock2D()`を呼んで処理を終えればいい。
 
 :::message
-`MFCopyImage()`の代わりに`std::memcpy()`や`std::memmove()`でも可。以下、公式ドキュメントのチュートリアルより引用。
+`MFCopyImage()`の代わりに`std::copy()`などでも可。以下、公式ドキュメントのチュートリアルより引用。
 >この特定の例では、 memcpy の 使用も同様に機能します。 ただし、 MFCopyImage 関数は、ソース イメージのストライドがターゲット バッファーと一致しない場合を正しく処理します。
 :::
 
@@ -618,7 +618,7 @@ MFCreateMediaBufferFromMediaType
 ```
 
 音声は`IMFMediaBuffer`をそのまま扱う。
-処理時のヘルパー関数もないため、通常通り`std::memcpy()`や`std::memmove()`、あるいは`memcpy_s()`や`memmove_s()`を使う。
+処理時のヘルパー関数もないため、通常通り`std::copy()`や`std::copy_n()`などを使う。
 
 ```cpp
 BYTE *audio_sample_begin{};
@@ -626,7 +626,7 @@ DWORD audio_data_max_size{};
 
 audio_buffer->Lock(&audio_sample_begin, &audio_data_max_size, nullptr);
 
-memmove_s(audio_sample_begin, audio_data_max_size, raw_audio_sample_begin, audio_sample_size);
+std::copy_n(raw_audio_sample_begin, audio_sample_size, audio_sample_begin);
 
 audio_buffer->Unlock();
 
